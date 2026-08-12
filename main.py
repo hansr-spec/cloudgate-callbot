@@ -63,6 +63,28 @@ def lookup_member(
     return member
 
 
+@app.post("/lookup-member")
+async def lookup_member_simple(payload: dict):
+    """
+    콜봇/LLM 도구 호출용 단순 엔드포인트.
+    요청 body 예시: {"phone": "01012345678"}
+    응답은 사람이 바로 읽을 수 있는 answer 텍스트로 내려줍니다.
+    """
+    phone = str(payload.get("phone", "")).replace("-", "").strip()
+    member = MEMBERS.get(phone)
+
+    if not member:
+        answer = "해당 전화번호로 등록된 회원 정보를 찾을 수 없습니다."
+    else:
+        answer = (
+            f"{member['name']} 고객님, {member['grade']} 등급이시며 "
+            f"현재 포인트는 {member['points']}점입니다. "
+            f"회원 상태는 {member['status']}입니다."
+        )
+
+    return {"answer": answer, "member": member}
+
+
 @app.post("/dialogflow-webhook")
 async def dialogflow_webhook(payload: dict):
     """
