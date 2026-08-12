@@ -1,0 +1,90 @@
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(title="회원정보 조회 데모 API", version="1.0.0")
+
+# CORS 허용 (콜봇/외부 플랫폼에서 호출할 수 있도록)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# -------------------------------------------------------------------
+# 목업(mock) 회원 데이터입니다. 실제 개인정보가 아닌 데모용 가상 데이터입니다.
+# 실제 서비스에서는 이 부분을 DB 조회로 교체하세요.
+# -------------------------------------------------------------------
+MEMBERS = {
+    "01012345678": {
+        "member_id": "M0001",
+        "name": "홍길동",
+        "phone": "01012345678",
+        "grade": "VIP",
+        "points": 15200,
+        "join_date": "2021-03-15",
+        "status": "정상",
+    },
+    "01098765432": {
+        "member_id": "M0002",
+        "name": "김영희",
+        "phone": "01098765432",
+        "grade": "일반",
+        "points": 3200,
+        "join_date": "2023-07-01",
+        "status": "정상",
+    },
+    "01055556666": {
+        "member_id": "M0003",
+        "name": "이철수",
+        "phone": "01055556666",
+        "grade": "골드",
+        "points": 8900,
+        "join_date": "2019-11-20",
+        "status": "휴면",
+    },
+}
+
+
+@app.get("/")
+def root():
+    return {"message": "회원정보 조회 데모 API가 정상 동작 중입니다.", "docs": "/docs"}
+
+
+@app.get("/members/lookup")
+def lookup_member(
+    phone: str = Query(..., description="회원 전화번호 (하이픈 없이, 예: 01012345678)")
+):
+    """전화번호로 회원정보를 조회합니다. 일반 REST 호출용."""
+    normalized = phone.replace("-", "").strip()
+    member = MEMBERS.get(normalized)
+    if not member:
+        raise HTTPException(status_code=404, detail="회원 정보를 찾을 수 없습니다.")
+    return member
+
+
+@app.post("/dialogflow-webhook")
+async def dialogflow_webhook(payload: dict):
+    """
+    다이얼로그플로우(Dialogflow) Fulfillment 웹훅 형식.
+    인텐트 파라미터에 phone_number 라는 이름으로 전화번호가 담겨 온다고 가정합니다.
+    파라미터 이름은 실제 Dialogflow 인텐트 설정에 맞게 조정하세요.
+    """
+    try:
+        params = payload.get("queryResult", {}).get("parameters", {})
+        phone = str(params.get("phone_number", "")).replace("-", "").strip()
+    except AttributeError:
+        phone = ""
+
+    member = MEMBERS.get(phone)
+
+    if not member:
+        fulfillment_text = "죄송합니다. 해당 전화번호로 등록된 회원 정보를 찾을 수 없습니다."
+    else:
+        fulfillment_text = (
+            f"{member['name']} 고객님, {member['grade']} 등급이시며 "
+            f"현재 포인트는 {member['points']}점입니다. "
+            f"회원 상태는 {member['status']}입니다."
+        )
+
+    return {"fulfillmentText": fulfillment_text}
