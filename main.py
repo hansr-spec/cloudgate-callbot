@@ -74,15 +74,26 @@ async def lookup_member_simple(payload: dict):
     member = MEMBERS.get(phone)
 
     if not member:
-        answer = "해당 전화번호로 등록된 회원 정보를 찾을 수 없습니다."
-    else:
-        answer = (
-            f"{member['name']} 고객님, {member['grade']} 등급이시며 "
-            f"현재 포인트는 {member['points']}점입니다. "
-            f"회원 상태는 {member['status']}입니다."
-        )
+        return {
+            "found": False,
+            "name": "",
+            "answer": "해당 전화번호로 등록된 회원 정보를 찾을 수 없습니다.",
+        }
 
-    return {"answer": answer, "member": member}
+    answer = (
+        f"{member['name']} 고객님, {member['grade']} 등급이시며 "
+        f"현재 포인트는 {member['points']}점입니다. "
+        f"회원 상태는 {member['status']}입니다."
+    )
+
+    return {
+        "found": True,
+        "name": member["name"],
+        "grade": member["grade"],
+        "points": member["points"],
+        "status": member["status"],
+        "answer": answer,
+    }
 
 
 @app.post("/dialogflow-webhook")
