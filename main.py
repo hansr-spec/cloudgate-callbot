@@ -18,8 +18,8 @@ app.add_middleware(
 MEMBERS = {
     "01012345678": {
         "member_id": "M0001",
-        "name": "홍길동",
-        "phone": "01012345678",
+        "name": "한세라",
+        "phone": "01046910781",
         "grade": "VIP",
         "points": 15200,
         "join_date": "2021-03-15",
