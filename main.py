@@ -20,7 +20,7 @@ MEMBERS = {
         "member_id": "M0001",
         "name": "한세라",
         "phone": "01046910781",
-        "grade": "123허1234",
+        "grade": "36허4567",
         "points": 15200,
         "join_date": "2021-03-15",
         "status": "정상",
@@ -46,6 +46,27 @@ MEMBERS = {
 }
 
 
+def normalize_phone(raw: str) -> str:
+    """
+    실제 통화에서는 발신번호가 다양한 형태로 넘어올 수 있어 표준 형태로 맞춰줍니다.
+    예: '+82 10-4691-0781', '821046910781', '010 4691 0781' -> '01046910781'
+    """
+    if not raw:
+        return ""
+    # 공백, 하이픈, 괄호 제거
+    p = str(raw).strip()
+    for ch in [" ", "-", "(", ")"]:
+        p = p.replace(ch, "")
+
+    # 국가번호 +82 / 82 처리 -> 0으로 교체
+    if p.startswith("+82"):
+        p = "0" + p[3:]
+    elif p.startswith("82") and len(p) >= 11:
+        p = "0" + p[2:]
+
+    return p
+
+
 @app.get("/")
 def root():
     return {"message": "회원정보 조회 데모 API가 정상 동작 중입니다.", "docs": "/docs"}
@@ -56,7 +77,7 @@ def lookup_member(
     phone: str = Query(..., description="회원 전화번호 (하이픈 없이, 예: 01012345678)")
 ):
     """전화번호로 회원정보를 조회합니다. 일반 REST 호출용."""
-    normalized = phone.replace("-", "").strip()
+    normalized = normalize_phone(phone)
     member = MEMBERS.get(normalized)
     if not member:
         raise HTTPException(status_code=404, detail="회원 정보를 찾을 수 없습니다.")
@@ -70,7 +91,8 @@ async def lookup_member_simple(payload: dict):
     요청 body 예시: {"phone": "01012345678"}
     응답은 사람이 바로 읽을 수 있는 answer 텍스트로 내려줍니다.
     """
-    phone = str(payload.get("phone", "")).replace("-", "").strip()
+    raw_phone = payload.get("phone", "")
+    phone = normalize_phone(raw_phone)
     member = MEMBERS.get(phone)
 
     if not member:
@@ -78,6 +100,8 @@ async def lookup_member_simple(payload: dict):
             "found": False,
             "name": "",
             "answer": "해당 전화번호로 등록된 회원 정보를 찾을 수 없습니다.",
+            "received_phone": raw_phone,      # 디버깅용: 실제 넘어온 원본 값
+            "normalized_phone": phone,        # 디버깅용: 정규화 후 값
         }
 
     answer = (
@@ -105,7 +129,7 @@ async def dialogflow_webhook(payload: dict):
     """
     try:
         params = payload.get("queryResult", {}).get("parameters", {})
-        phone = str(params.get("phone_number", "")).replace("-", "").strip()
+        phone = normalize_phone(params.get("phone_number", ""))
     except AttributeError:
         phone = ""
 
